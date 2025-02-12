@@ -1,0 +1,75 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build All Dependencies",
+            "type": "shell",
+            "group": "build",
+            "presentation": { "reveal": "always", "panel": "new" },
+            "options": { "cwd": "${workspaceFolder}/dependencies" },
+            "command": "${workspaceFolder}/dependencies/build.sh",
+            "windows": {
+                "command": "${workspaceFolder}\\dependencies\\build.bat",
+                "options": {
+                    "cwd": "${workspaceFolder}\\dependencies",
+                    "shell": { "executable": "cmd.exe", "args": [ "/d", "/c", "vcvars64.bat", "&&", "set", "CL=/MP", "&&"] }
+                },
+                "args": [ "${input:buildType}" ]
+            },
+            "runOptions": { "reevaluateOnRerun": false }
+            // To allow Rerun Last Task to skip prompting for type
+        },
+        {
+            "label": "Clean All Dependencies",
+            "type": "shell",
+            "group": "build",
+            "presentation": { "reveal": "always", "panel": "new" },
+            "options": { "cwd": "${workspaceFolder}/dependencies" },
+            "command": "${workspaceFolder}/dependencies/clean.sh",
+            "windows": {
+                "command": "${workspaceFolder}\\dependencies\\clean.bat",
+                "options": {
+                    "cwd": "${workspaceFolder}\\dependencies",
+                    "shell": { "executable": "cmd.exe", "args": [ "/d", "/c", "vcvars64.bat", "&&", "set", "CL=/MP", "&&"] }
+                },
+                "args": [ "${input:buildType}" ]
+            },
+            "runOptions": { "reevaluateOnRerun": false }
+            // To allow Rerun Last Task to skip prompting for type
+        },
+        {
+            "label": "Build Specific Dependency",
+            "type": "shell",
+            "group": "build",
+            "presentation": { "reveal": "always", "panel": "new" },
+            "options": { "cwd": "${workspaceFolder}/dependencies/buildfiles/${input:depName}" },
+            "command": "${workspaceFolder}/dependencies/buildfiles/${input:depName}/fetch.sh",
+            "args": [ "&&", "${workspaceFolder}/dependencies/buildfiles/${input:depName}/build.sh" ],
+            "windows": {
+                "command": "${workspaceFolder}\\dependencies\\buildfiles\\${input:depName}\\build.bat",
+                "options": {
+                    "cwd": "${workspaceFolder}\\dependencies\\buildfiles\\${input:depName}",
+                    "shell": { "executable": "cmd.exe", "args": [ "/d", "/c", "vcvars64.bat", "&&", "set", "CL=/MP", "&&"] }
+                },
+                "args": [ "${input:buildType}" ]
+            },
+            "runOptions": { "reevaluateOnRerun": false }
+            // To allow Rerun Last Task to skip prompting for type
+        }
+    ],
+    "inputs": [
+        { // Only release and debug builds on windows, for both dependency and main file
+            "id": "buildType",
+            "description": "Build Type:",
+            "default": "release-verify",
+            "type": "pickString",
+            "options": [ "release", "release-verify", "debug" ]
+        },
+        {
+            "id": "depName",
+            "description": "Dependency name:",
+            "type": "pickString",
+            "options": [ "vrpn" ]
+        },
+    ]
+}

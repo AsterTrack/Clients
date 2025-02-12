@@ -1,0 +1,51 @@
+{
+	// Use IntelliSense to learn about possible attributes.
+	// Hover to view descriptions of existing attributes.
+	// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+	"version": "0.2.0",
+	"configurations": [
+		{ // Uses Microsoft C/C++ extension, great debugging experience
+			"name": "Windows Debug AsterTrack",
+			"type": "cppvsdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/build/astertrack-viewer.exe",
+			"cwd": "${workspaceFolder}"
+		},
+		{ // Uses Microsoft C/C++ extension, very slow debugging experience with GDB
+			"name": "Linux Debug AsterTrack GDB Slow",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/build/astertrack-viewer",
+			"cwd": "${workspaceFolder}"
+		},
+		{ // Uses Native Debug extension, somewhat faster debugging experience with GDB
+			"name": "Linux Debug AsterTrack GDB Faster",
+			"type": "gdb",
+			"request": "launch",
+			"target": "${workspaceFolder}/build/astertrack-viewer",
+			"cwd": "${workspaceFolder}"
+		},
+		{ // Uses CodeLLDB extension, MUCH faster debugging experience using LLDB
+			"name": "Linux Debug AsterTrack LLDB Fastest",
+			"type": "lldb",
+			"request": "launch",
+			"sourceLanguages": [ "C++" ],
+			"program": "${workspaceFolder}/build/astertrack-viewer",
+			"cwd": "${workspaceFolder}"
+		},
+		{ // Uses CodeLLDB extension, MUCH faster debugging experience using LLDB
+			"name": "Linux Debug AsterTrack LLDB Fastest (Attach)",
+			"type": "lldb",
+			"request": "attach",
+			"sourceLanguages": [ "C++" ],
+			"program": "${workspaceFolder}/build/astertrack-viewer",
+		},
+		{
+			"name": "(gdb) Attach",
+			"type": "cppdbg",
+			"request": "attach",
+			"program": "${workspaceFolder}/build/astertrack-viewer",
+			"MIMode": "gdb"
+		}
+	]
+}

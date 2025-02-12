@@ -1,0 +1,21 @@
+# Extension Caches
+.cache
+.codechecker
+compile_commands.json
+
+# Build systems
+build/
+
+# Temporary Outputs
+log.txt
+imgui.ini
+
+# Dependency build cache
+dependencies/buildfiles/*/linux
+dependencies/buildfiles/*/win
+dependencies/buildfiles/*/source
+
+# Dependencies fetched and built locally
+cpp/lib
+cpp/include
+python/lib
