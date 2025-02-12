@@ -351,7 +351,7 @@ public:
  * - e.g. beginIndex() > 0 - iterators have index() methods to get the index
  * - the Views pos() / operator[] methods use that shifted index, so pos(0) will NOT necessarily yield begin()
  * 
- * Internally uses a mutex but takes care to not hold it for very long. The following operations aquire the mutex:
+ * Internally uses a mutex but takes care to not hold it for very long. The following operations acquire the mutex:
  * - push_back/insert: short state-copy and block-check, as well as allocation for any new blocks required while locked
  * - getView: very short O(1) state-copy and increasing of the reference counter of the current block range
  * - cull_front/cull_all/cull_clear: very short O(1) access to switch state pointers and swap the current reference counter
@@ -423,13 +423,13 @@ private:
 		{ // Start from begin
 			if constexpr (Const) it = state.const_begin;
 			else it = state.begin;
-			std::advance(it, block-state.start);
+			std::advance(it, (long)block-state.start);
 		}
 		else
 		{ // Start from end
 			if constexpr (Const) it = state.const_back;
 			else it = state.back;
-			std::advance(it, block-state.start-state.count+1);
+			std::advance(it, (long)block-(long)state.start-(long)state.count+1);
 		}
 		return it;
 	}
@@ -698,12 +698,12 @@ public:
 	template<typename U = T>
 	void push_back(U&& x)
 	{
-		std::size_t index, b, i;
+		std::size_t index;
 		BlockIt<false> block;
 		{
 			std::unique_lock lock(m_mutex);
 			index = m_state.index++;
-			ensure_block(index/N);
+			if (!ensure_block(index/N)) return; // In culled block - not an error per-se
 			block = m_state.back;
 		}
 		(*block)[index%N] = std::forward<U>(x);
@@ -824,20 +824,19 @@ public:
 		{
 			m_state.start += m_state.count+num;
 			m_state.count = -num;
-			m_state.index = m_state.start*N;
 			m_state.begin = std::next(BASE::end(), num);
 			m_state.const_begin = std::next(std::add_const_t<BASE>::end(), num);
-			m_state.back = BASE::end();
-			m_state.const_back = std::add_const_t<BASE>::end();
+			m_state.back = std::prev(BASE::end());
+			m_state.const_back = std::prev(std::add_const_t<BASE>::end());
 		}
 		else
 		{
 			m_state.start += num;
 			m_state.count -= num;
-			m_state.begin = std::next(BASE::begin(), num);
-			m_state.const_begin = std::next(std::add_const_t<BASE>::begin(), num);
-			m_state.back = BASE::end();
-			m_state.const_back = std::add_const_t<BASE>::end();
+			m_state.begin = std::next(m_state.begin, num);
+			m_state.const_begin = std::next(m_state.const_begin, num);
+			m_state.back = std::prev(BASE::end());
+			m_state.const_back = std::prev(std::add_const_t<BASE>::end());
 		}
 		detachBlocks(front, m_state.begin);
 	}

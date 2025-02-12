@@ -33,7 +33,6 @@ SOFTWARE.
 #include "util/util.hpp" // dtUS
 
 #include <cstdio>
-#include <dlfcn.h>
 
 AppState AppInstance;
 ClientState StateInstance = {};

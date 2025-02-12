@@ -6,14 +6,14 @@
             "type": "shell",
             "group": "build",
             "command": "make",
-            "args": [ "COMPILER=${input:compiler}", "BUILD_TYPE=${input:buildType}", "-j", "$(nproc", "--ignore=2)" ],
+            "args": [ "COMPILER=${input:compiler}", "BUILD_TYPE=${input:linuxBuildType}", "-j", "$(nproc", "--ignore=2)" ],
             "windows": {
                 "command": "mkdir",
                 "args": [
                     "build", "&",
                     "cd", "build", "&&",
                     "cmake", "-DCMAKE_BUILD_TYPE=${input:buildType}", "..", "&&",
-                    "msbuild", "astertrack.sln", "-p:Configuration=${input:buildType}"
+                    "msbuild", "astertrack-viewer.sln", "-p:Configuration=${input:buildType}"
                 ],
                 "problemMatcher": "$msCompile",
                 "options": { "shell": { "executable": "cmd.exe", "args": [ "/d", "/c", "vcvars64.bat", "&&", "set", "CL=/MP", "&&"] } }
@@ -29,7 +29,7 @@
             "args": [
                 "build", "&",
                 "bear", "--output", "build/compile_commands.json", "--append", "--",
-                "make", "COMPILER=${input:compiler}", "BUILD_TYPE=${input:buildType}", "-j", "$(nproc", "--ignore=2)",
+                "make", "COMPILER=${input:compiler}", "BUILD_TYPE=${input:linuxBuildType}", "-j", "$(nproc", "--ignore=2)",
                 // Sadly, "make --dry-run", does not work, it intercepts commands
             ],
             "runOptions": { "reevaluateOnRerun": false }
@@ -71,13 +71,14 @@
             "presentation": { "reveal": "always", "panel": "new" },
             "options": { "cwd": "${workspaceFolder}/dependencies" },
             "command": "${workspaceFolder}/dependencies/clean.sh",
+            "args": [ "${input:cleanType}" ],
             "windows": {
                 "command": "${workspaceFolder}\\dependencies\\clean.bat",
                 "options": {
                     "cwd": "${workspaceFolder}\\dependencies",
                     "shell": { "executable": "cmd.exe", "args": [ "/d", "/c", "vcvars64.bat", "&&", "set", "CL=/MP", "&&"] }
                 },
-                "args": [ "${input:buildType}" ]
+                "args": [ "${input:cleanType}" ]
             },
             "runOptions": { "reevaluateOnRerun": false }
             // To allow Rerun Last Task to skip prompting for type
@@ -106,6 +107,13 @@
         { // Only release and debug builds on windows, for both dependency and main file
             "id": "buildType",
             "description": "Build Type:",
+            "default": "release",
+            "type": "pickString",
+            "options": [ "release", "debug" ]
+        },
+        { // Allow sanitized builds on linux (gcc and clang)
+            "id": "linuxBuildType",
+            "description": "Build Type:",
             "default": "release-verify",
             "type": "pickString",
             "options": [ "release", "release-verify", "debug" ]
@@ -122,6 +130,13 @@
             "description": "Dependency name:",
             "type": "pickString",
             "options": [ "Eigen", "glfw", "vrpn" ]
+        },
+        { // Clean sources and build or just build
+            "id": "cleanType",
+            "description": "Clean Type:",
+            "default": "all",
+            "type": "pickString",
+            "options": [ "all", "build" ]
         },
     ]
 }

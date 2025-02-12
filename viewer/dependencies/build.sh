@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-# Select release or debug mode
-MODE="$(echo $1 | tr '[:upper:]' '[:lower:]')"
-
 DEPENDENCIES="Eigen glfw vrpn"
 for DEP in $DEPENDENCIES; do
 	pushd buildfiles/$DEP > /dev/null

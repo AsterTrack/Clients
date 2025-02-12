@@ -310,6 +310,19 @@ void visualiseCamera(Eigen::Isometry3f camera, Color color)
 	cameraMesh->draw();
 }
 
+void visualiseOrigin(Eigen::Vector3f pos, float scale, float lineWidth)
+{
+	flatVertColorShader->use();
+	glUniformMatrix4fv(flatVertColorShader->uProjAdr, 1, GL_FALSE, vpMat.data());
+	Eigen::Isometry3f model = Eigen::Isometry3f::Identity();
+	model.translation() = pos;
+	model.linear() *= scale;
+	glUniformMatrix4fv(flatVertColorShader->uModelAdr, 1, GL_FALSE, model.matrix().data());
+
+	glLineWidth(lineWidth);
+	coordinateOriginMesh->draw();
+}
+
 void visualisePose(const Eigen::Isometry3f &pose, Color color, float scale, float lineWidth)
 {
 	flatUniformColorShader->use();
@@ -551,7 +564,7 @@ void visualisePoints2D(const std::vector<Eigen::Vector2f> &points2D, Color color
 	thread_local std::vector<VisPoint> vertices;
 	vertices.clear();
 	for (const auto &pt : points2D)
-		vertices.emplace_back(Eigen::Vector3f(pt.x(), pt.y(), 1-depth), color, size);
+		vertices.emplace_back(Eigen::Vector3f(pt.x(), pt.y(), 1-depth), (Color8)color, size);
 	visualisePointsSprites(vertices, round);
 }
 
@@ -562,7 +575,7 @@ void visualisePoints2D(it_type pts_begin, it_type pts_end, Color color, float si
 	vertices.clear();
 	while (pts_begin != pts_end)
 	{
-		vertices.emplace_back(Eigen::Vector3f(pts_begin->x(), pts_begin->y(), 1-depth), color, size);
+		vertices.emplace_back(Eigen::Vector3f(pts_begin->x(), pts_begin->y(), 1-depth), (Color8)color, size);
 		pts_begin++;
 	}
 	visualisePointsSprites(vertices, round);
