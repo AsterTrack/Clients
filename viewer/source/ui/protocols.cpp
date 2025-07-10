@@ -51,18 +51,41 @@ void InterfaceState::UpdateProtocols(InterfaceWindow &window)
 		else
 		{
 			ImGui::TextUnformatted("Connected to local server!");
-			// TODO: Query known trackers from VRPN server. Not implemented yet.
-			auto localTrackers = vrpn_getKnownTrackers(state.io.vrpn_local.get());
-			for (auto tracker : localTrackers)
+		}
+		EndSection();
+
+		BeginSection("Known Trackers (?)");
+		ImGui::SetItemTooltip("Any trackers remote is exposing or local is attempting to connect.");
+
+		auto localTrackers = vrpn_getKnownTrackers(state.io.vrpn_local.get());
+		for (auto trackerPath : localTrackers)
+		{
+			ImGui::Text("  - %s", trackerPath.c_str());
+			SameLineTrailing(ImGui::GetFrameHeight());
+			if (ImGui::Button(asprintf_s("+##%s", trackerPath.c_str()).c_str(), ImVec2(ImGui::GetFrameHeight(), 0)))
 			{
-				ImGui::Text("%s", tracker.c_str());
+				bool found = false;
+				for (auto &trk : state.io.vrpn_trackers)
+				{
+					if (trk.path.size() < trackerPath.size()) continue;
+					if (trk.path.compare(0, trackerPath.size(), trackerPath) != 0) continue;
+					if (trk.path.size() > trackerPath.size() && trk.path[trackerPath.size()] != '@') continue;
+					found = true;
+					break;
+				}
+				if (!found)
+				{
+					state.io.vrpn_trackers.emplace_back(trackerPath);
+					state.io.vrpn_trackers.back().connect();
+				}
 			}
 		}
+
 		EndSection();
 
 		BeginSection("Connected Trackers");
 		int index = 0;
-		for (auto trk = state.io.vrpn_trackers.begin(); trk != state.io.vrpn_trackers.end(); trk++, index++)
+		for (auto trk = state.io.vrpn_trackers.begin(); trk != state.io.vrpn_trackers.end();)
 		{
 			ImGui::PushID(index);
 			ImGui::PushID(trk->path.c_str());
@@ -70,42 +93,61 @@ void InterfaceState::UpdateProtocols(InterfaceWindow &window)
 				selectedTarget = index;
 			ImGui::SameLine();
 			ImGui::AlignTextToFramePadding();
-			ImGui::Text("%s", trk->path.c_str());
+			if (trk->editing)
+			{
+				trk->remote = nullptr;
+				ImGui::SetNextItemWidth(LineWidthRemaining() - ImGui::GetFrameHeight()*2 - ImGui::GetStyle().ItemSpacing.x*2);
+				ImGui::InputText("##path", &trk->path);
+			}
+			else
+				ImGui::Text("%s", trk->path.c_str());
 
-			if (trk->remote)
+			if (trk->remote && !trk->editing)
 			{
 				const char *status;
 				auto con = trk->remote->connectionPtr();
 				bool delayed = trk->receivedPackets && dt(trk->lastPacket, sclock::now()) > 50;
 				if (trk->receivedPackets && !delayed && con->connected())
-					status = "Connected";
+					status = "Tracking";
+				else if (trk->receivedPackets && !trk->isConnected())
+					status = "Connection Lost";
 				else if (trk->receivedPackets && !con->doing_okay())
-					status = "Broken";
+					status = "Connection Broken"; // TODO: This might be redundant, isConnected should cover it all
 				else if (trk->receivedPackets && delayed)
-					status = "Lost";
+					status = "Tracking Lost";
+				else if (trk->isConnected())
+					status = "Connected";
 				else
-					status = "Trying";
-				SameLineTrailing(ImGui::CalcTextSize(status).x + ImGui::GetStyle().ItemSpacing.x + ImGui::GetFrameHeight());
+					status = "Searching";
+				SameLineTrailing(ImGui::CalcTextSize(status).x + ImGui::GetFrameHeight()*2 + ImGui::GetStyle().ItemSpacing.x*2);
 				ImGui::AlignTextToFramePadding();
 				ImGui::TextUnformatted(status);
 				ImGui::SameLine();
 			}
 			else
 			{
-				SameLineTrailing(ImGui::GetFrameHeight());
+				SameLineTrailing(ImGui::GetFrameHeight()*2 + ImGui::GetStyle().ItemSpacing.x);
 			}
-			if (CrossButton("Del"))
+			if (ImGui::Button("E", ImVec2(ImGui::GetFrameHeight(), 0)))
+			{
+				trk->editing = !trk->editing;
+				if (!trk->editing && !trk->remote)
+					trk->connect();
+			}
+			ImGui::SameLine();
+			bool remove = CrossButton("Del");
+			ImGui::PopID();
+			ImGui::PopID();
+			if (remove)
 			{
 				trk = state.io.vrpn_trackers.erase(trk);
 				if (selectedTarget == index) selectedTarget = -1;
 				else if (selectedTarget > index) selectedTarget--;
-				index--;
+				continue;
 			}
-			ImGui::PopID();
-			ImGui::PopID();
+			trk++;
+			index++;
 		}
-
-		io_lock.unlock();
 
 		{
 			static std::string path;
@@ -114,7 +156,8 @@ void InterfaceState::UpdateProtocols(InterfaceWindow &window)
 			ImGui::SameLine();
 			if (ImGui::Button("Connect", SizeWidthDiv3()))
 			{
-				ConnectVRPNTracker(state, path);
+				state.io.vrpn_trackers.emplace_back(std::move(path));
+				state.io.vrpn_trackers.back().connect();
 				path.clear();
 			}
 		}

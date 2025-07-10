@@ -66,6 +66,5 @@ void ClientExit(ClientState &state);
 
 void SetupIO(ClientState &state);
 void ResetIO(ClientState &state);
-void ConnectVRPNTracker(ClientState &state, std::string path);
 
 #endif // CLIENT_H

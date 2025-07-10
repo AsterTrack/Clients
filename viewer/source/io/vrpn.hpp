@@ -27,7 +27,6 @@ SOFTWARE.
 #define VRPN_H
 
 #include "util/eigendef.hpp"
-
 #include "util/util.hpp" // TimePoint_t
 #include "util/memory.hpp" // unique_ptr, opaque_ptr
 
@@ -41,21 +40,10 @@ SOFTWARE.
  * VRPN (Virtual Reality Private Network) interface to exchange tracking data between programs (locally or on the network)
  */
 
-class VRPN_API vrpn_Tracker_AsterTrack : public vrpn_Tracker
-{
-	public:
-		vrpn_Tracker_AsterTrack(int ID, const char *path, vrpn_Connection *connection, int index = 0);
-
-		void updatePose(int sensor, TimePoint_t time, Eigen::Isometry3f pose);
-
-		virtual void mainloop ();
-
-		int id;
-};
-
 struct vrpn_Tracker_Wrapper
 {
 	std::string path;
+	bool editing = false;
 	std::unique_ptr<vrpn_Tracker_Remote> remote = nullptr;
 	bool receivedPackets = false;
 	TimePoint_t lastPacket, lastTimestamp;
@@ -63,6 +51,8 @@ struct vrpn_Tracker_Wrapper
 	Eigen::Isometry3f pose;
 
 	vrpn_Tracker_Wrapper(std::string Path);
+
+	bool isConnected();
 
 	void connect();
 };

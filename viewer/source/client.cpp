@@ -90,7 +90,7 @@ static void ReceivingThread(std::stop_token stop_token, ClientState *state)
 			state->io.vrpn_local->mainloop();
 		}
 
-		std::this_thread::sleep_for(std::chrono::microseconds(100));
+		std::this_thread::sleep_for(std::chrono::microseconds(500));
 	}
 }
 
@@ -143,12 +143,4 @@ void ResetIO(ClientState &state)
 	state.io.vrpn_local = nullptr;
 
 	// TODO: Clean up other integrations here as well
-}
-
-void ConnectVRPNTracker(ClientState &state, std::string path)
-{
-	auto io_lock = std::unique_lock(state.io.mutex);
-	// Add to list first so pointers stay intact
-	state.io.vrpn_trackers.emplace_back(std::move(path));
-	state.io.vrpn_trackers.back().connect();
 }

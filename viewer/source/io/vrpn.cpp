@@ -25,6 +25,8 @@ SOFTWARE.
 
 #include "vrpn.hpp"
 
+#include "vrpn/quat.h"
+
 #include "util/log.hpp"
 
 
@@ -34,9 +36,6 @@ SOFTWARE.
 
 
 /* Integrating VRPN into a more modern C++ style */
-
-template<> void OpaqueDeleter<vrpn_Tracker_AsterTrack>::operator()(vrpn_Tracker_AsterTrack* ptr) const
-{ delete ptr; }
 
 template<> void OpaqueDeleter<vrpn_Connection>::operator()(vrpn_Connection* ptr) const
 { ptr->removeReference(); }
@@ -71,54 +70,6 @@ static inline TimePoint_t getTimestamp(struct timeval time_msg)
 	timestamp -= std::chrono::microseconds(time_now.tv_usec-time_msg.tv_usec);
 	return timestamp;
 }
-/* Wrapper for a VRPN tracker output */
-
-vrpn_Tracker_AsterTrack::vrpn_Tracker_AsterTrack(int ID, const char *path, vrpn_Connection *connection, int index)
-	: vrpn_Tracker(path, connection), id(ID)
-{
-}
-
-void vrpn_Tracker_AsterTrack::updatePose(int sensor, TimePoint_t time, Eigen::Isometry3f pose)
-{
-	// Just used for local logging
-	vrpn_Tracker::timestamp = createTimestamp(time);
-	vrpn_Tracker::frame_count = 0;
-
-	// We're using a left-handed coordinate system (same as Unreal, or a rotated Unity one)
-	// VRPN (along with OpenCV, Blender, etc.) use right-handed coordinate systems
-	// So flip handedness here
-	Eigen::Isometry3f flipXY;
-	flipXY.matrix()
-	 << 0, 1, 0, 0,
-		1, 0, 0, 0,
-		0, 0, 1, 0,
-		0, 0, 0, 1;
-	pose = flipXY * pose * flipXY;
-	// Additionally, the camera points into the positive z direction, which is convenient for CV (z == distance)
-	// However, other tools like Blender have the camera point into the negative z direction
-
-	// Set packet data
-	d_sensor = sensor;
-	Eigen::Quaternionf rotQ(pose.rotation());
-	d_quat[0] = rotQ.x();
-	d_quat[1] = rotQ.y();
-	d_quat[2] = rotQ.z();
-	d_quat[3] = rotQ.w();
-	pos[0] = pose.translation().x();
-	pos[1] = pose.translation().y();
-	pos[2] = pose.translation().z();
-
-	// Encode and send packet
-	static char buffer[1000];
-	int length = vrpn_Tracker::encode_to(buffer);
-	int error = d_connection->pack_message(length, vrpn_Tracker::timestamp, position_m_id, d_sender_id, buffer, vrpn_CONNECTION_LOW_LATENCY);
-	if (error) LOG(LIO, LError, "Failed to write VRPN message with error %d!\n", error);
-}
-
-void vrpn_Tracker_AsterTrack::mainloop()
-{
-	vrpn_Tracker::server_mainloop();
-}
 
 
 /* Wrapper for a VRPN remote tracker */
@@ -138,7 +89,7 @@ static void handleTrackerPosRot(void *data, const vrpn_TRACKERCB t)
 	}
 
 	Eigen::Vector3d pos = Eigen::Vector3d(t.pos[0], t.pos[1], t.pos[2]);
-	Eigen::Matrix3d rot = Eigen::Quaterniond(t.quat[3], t.quat[0], t.quat[1], t.quat[2]).toRotationMatrix();
+	Eigen::Matrix3d rot = Eigen::Quaterniond(t.quat[Q_W], t.quat[Q_X], t.quat[Q_Y], t.quat[Q_Z]).toRotationMatrix();
 	Eigen::Isometry3f pose;
 	pose.linear() = rot.cast<float>();
 	pose.translation() = pos.cast<float>();
@@ -190,43 +141,31 @@ void vrpn_Tracker_Wrapper::connect()
 	remote->register_change_handler(this, handleTrackerAccel);
 }
 
-
+bool vrpn_Tracker_Wrapper::isConnected()
+{
+	if (!remote) return false;
+	struct timeval now;
+	struct timeval diff;
+	vrpn_gettimeofday(&now, NULL);
+	diff = vrpn_TimevalDiff(now, remote->time_last_ping_response);
+	vrpn_TimevalNormalize(diff);
+	return diff.tv_sec < 3;
+}
 
 std::vector<std::string> vrpn_getKnownTrackers(vrpn_Connection *connection)
 {
 	std::vector<std::string> trackers;
-	// TODO: Implement custom protocol to send trackers to clients?
-	// I thought VRPN internally had knowledge on tracker server provides, but that is not the case
+
+	// Sadly, this uses d_dispatcher, which does not differentiate between local and remote sender name
+	// d_senders of an endpoint in d_endpoints might have more differentiating info (e.g. assigned remote id)
+	// but these are all protected members
+	int i = 1;
+	while (true)
+	{
+		const char *senderName = connection->sender_name(i++);
+		if (!senderName) break;
+		trackers.emplace_back(senderName);
+	}
+
 	return trackers;
 }
-
-
-/*
- * A horrible hack to allow access to private members of VRPN.
- */
-
-/* #define MOD_CONCATE_(X, Y) X##Y
-#define MOD_CONCATE(X, Y) MOD_CONCATE_(X, Y)
-
-#define ALLOW_ACCESS(CLASS, MEMBER, ...) \
-  template<typename Only, __VA_ARGS__ CLASS::*Member> \
-  struct MOD_CONCATE(MEMBER, __LINE__) { friend __VA_ARGS__ CLASS::*Access(Only*) { return Member; } }; \
-  template<typename> struct Only_##MEMBER; \
-  template<> struct Only_##MEMBER<CLASS> { friend __VA_ARGS__ CLASS::*Access(Only_##MEMBER<CLASS>*); }; \
-  template struct MOD_CONCATE(MEMBER, __LINE__)<Only_##MEMBER<CLASS>, &CLASS::MEMBER>
-
-#define ACCESS(OBJECT, MEMBER) \
- (OBJECT).*Access((Only_##MEMBER<std::remove_reference<decltype(OBJECT)>::type>*)nullptr)
-#define ACCESS_AS(OBJECT, TYPE, MEMBER) \
- (OBJECT).*Access((Only_##MEMBER<std::remove_reference<TYPE>::type>*)nullptr)
-
-
-ALLOW_ACCESS(vrpn_Connection, d_endpoints, vrpn::EndpointContainer);
-ALLOW_ACCESS(vrpn_Endpoint, d_dispatcher, vrpn_TypeDispatcher*);
-
-class vrpn_TypeDispatcher {
-
-public:
-	int numSenders(void) const;
-	const char *senderName(int which) const;
-}; */
