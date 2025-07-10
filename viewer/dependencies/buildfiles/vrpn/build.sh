@@ -20,11 +20,10 @@ rm $SRC_PATH/ParseVersion.cmake
 touch $SRC_PATH/ParseVersion.cmake
 
 pushd linux/build
-cmake ../../$SRC_PATH -DVRPN_USE_STD_CHRONO=ON -DVRPN_USE_GPM_MOUSE=OFF -DVRPN_BUILD_PYTHON_HANDCODED_3X=ON
-make -j4 quat vrpn vrpn-python
+cmake ../../$SRC_PATH -DCMAKE_BUILD_TYPE=Debug -DVRPN_USE_STD_CHRONO=ON -DVRPN_USE_GPM_MOUSE=OFF
+make -j4 quat vrpn
 # Install just needed for easy access to include files
 cmake -DCMAKE_INSTALL_COMPONENT=clientsdk -DCMAKE_INSTALL_PREFIX=../install -P cmake_install.cmake
-cmake -DCMAKE_INSTALL_COMPONENT=python -DCMAKE_INSTALL_PREFIX=../python -P cmake_install.cmake
 popd
 
 echo -----------------------------------------

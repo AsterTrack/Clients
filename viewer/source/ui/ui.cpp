@@ -32,9 +32,12 @@ SOFTWARE.
 #include "app.hpp"
 
 #include "gl/visualisation.hpp" // initVisualisation/cleanVisualisation
+#include "imgui/imgui_onDemand.hpp"
 
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_opengl3.h"
+
+#include <filesystem>
 
 struct wl_display;
 struct wl_resource;
@@ -57,10 +60,10 @@ const long targetIntervalUS = 1000000/60; // glfwSwapBuffer will further limit i
 // GLFW Platform Window
 static GLFWwindow* setupPlatformWindow(bool &useHeader);
 static void closePlatformWindow(GLFWwindow *windowHandle);
-static void checkDPIUpdate(GLFWwindow *glfwWindow);
 static void RefreshGLFWWindow(GLFWwindow *window);
 // ImGui Code
 static bool setupImGuiTheme();
+static void loadFont();
 
 
 /**
@@ -184,8 +187,6 @@ static void RefreshGLFWWindow(GLFWwindow *window)
 
 void InterfaceState::UpdateUI()
 {
-	checkDPIUpdate(glfwWindow);
-
 	// Start new UI frame
 	ImGui_ImplGlfw_NewFrame();
 	ImGui_ImplOpenGL3_NewFrame();
@@ -291,6 +292,8 @@ bool InterfaceState::Init()
 
 	setupImGuiTheme();
 
+	loadFont();
+
 	if (!ImGui_ImplGlfw_InitForOpenGL(glfwWindow, true))
 		return false;
 	if (!ImGui_ImplOpenGL3_Init())
@@ -341,6 +344,9 @@ void InterfaceState::Exit()
 
 	// Cleanup GL
 	cleanVisualisation();
+
+	// Cleanup OnDemand drawing system
+	CleanupOnDemand();
 
 	// Exit ImGui
 	ImGui_ImplOpenGL3_Shutdown();
@@ -516,42 +522,6 @@ static void closePlatformWindow(GLFWwindow *windowHandle)
 	glfwTerminate();
 }
 
-static void checkDPIUpdate(GLFWwindow *glfwWindow)
-{
-	int winX, winY;
-	int fbX, fbY;
-	float csX, csY;
-	glfwGetWindowSize(glfwWindow, &winX, &winY);
-	glfwGetFramebufferSize(glfwWindow, &fbX, &fbY);
-	glfwGetWindowContentScale(glfwWindow, &csX, &csY);
-
-	static float renderPixelRatio;
-	static float hidpiScale;
-	float t_renderPixelRatio = std::max((float)fbX/winX, (float)fbY/winY);
-	float t_hidpiScale = std::max(csX, csY);
-	if (renderPixelRatio != t_renderPixelRatio || hidpiScale != t_hidpiScale)
-	{
-		renderPixelRatio = t_renderPixelRatio;
-		hidpiScale = t_hidpiScale;
-
-		LOG(LGUI, LDebug, "Window %dx%d, Framebuffer %dx%d, ContentScale %fx%f\n"
-			"So pixel Ratio of %f, hidpi scale of %f, imgui reports dpi scale of %f",
-			winX, winY, fbX, fbY, csX, csY,
-			renderPixelRatio, hidpiScale, ImGui::GetWindowDpiScale());
-
-		ImFontConfig config;
-		config.OversampleH = 2;
-		config.OversampleV = 2;
-		config.GlyphExtraSpacing.x = 1.0f;
-		ImGui::GetIO().Fonts->Clear();
-		ImGui::GetIO().Fonts->AddFontFromFileTTF("config/Karla-Regular.ttf", 17*renderPixelRatio, &config);
-		ImGui::GetIO().FontGlobalScale = 1.0f / renderPixelRatio;
-
-		ImGui_ImplOpenGL3_DestroyFontsTexture();
-		ImGui_ImplOpenGL3_CreateFontsTexture();
-	}
-}
-
 
 /**
  * ImGui code
@@ -588,7 +558,8 @@ static bool setupImGuiTheme()
 	//style.LogSliderDeadzone;				// The size in pixels of the dead-zone around zero on logarithmic sliders that cross zero.
 	style.TabRounding = 4.0f;						// Radius of upper corners of a tab. Set to 0.0f to have rectangular tabs.
 	style.TabBorderSize = 0.0f;						// Thickness of border around tabs.
-	style.TabMinWidthForCloseButton = 0.0f;			// Minimum width for close button to appear on an unselected tab when hovered. Set to 0.0f to always show when hovering, set to FLT_MAX to never show close button unless selected.
+	style.TabCloseButtonMinWidthSelected = 0.0f;			// Minimum width for close button to appear on an unselected tab when hovered. Set to 0.0f to always show when hovering, set to FLT_MAX to never show close button unless selected.
+	style.TabCloseButtonMinWidthUnselected = 0.0f;	
 	style.TabBarBorderSize = 1.0f;					// Thickness of tab-bar separator, which takes on the tab active color to denote focus.
 	//style.ColorButtonPosition;			// Side of the color button in the ColorEdit4 widget (left/right). Defaults to ImGuiDir_Right.
 	//style.ButtonTextAlign;				// Alignment of button text when button is larger than text. Defaults to (0.5f, 0.5f) (centered).
@@ -665,4 +636,26 @@ static bool setupImGuiTheme()
 	//ImGui::StyleColorsLight();
 
 	return true;
+}
+
+static void loadFont()
+{
+	ImFontConfig config;
+	config.OversampleH = 2;
+	config.OversampleV = 2;
+	if (std::filesystem::exists("config/Karla-Regular.ttf"))
+	{
+		ImGui::GetIO().Fonts->Clear();
+		ImGui::GetIO().Fonts->AddFontFromFileTTF("config/Karla-Regular.ttf", 17, &config);
+	}
+	else if (std::filesystem::exists("../config/Karla-Regular.ttf"))
+	{
+		printf("'config/Karla-Regular.ttf' not found in working directory but in parent directory! Make sure to run AsterTrack in the program root directory!\n");
+		LOG(LDefault, LError, "'config/Karla-Regular.ttf' not found in working directory but in parent directory! Make sure to run AsterTrack in the program root directory!");
+	}
+	else
+	{
+		printf("'config/Karla-Regular.ttf' not found in working directory! Make sure to run AsterTrack in the program root directory!\n");
+		LOG(LDefault, LError, "'config/Karla-Regular.ttf' not found in working directory! Make sure to run AsterTrack in the program root directory!");
+	}
 }
