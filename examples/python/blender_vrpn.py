@@ -162,23 +162,21 @@ def getTargetFCurves(target):
 		target.animation_data_create()
 	if not target.animation_data.action:
 		target.animation_data.action = bpy.data.actions.new(f"{target.name}_MOCAP")
-	fcurves = target.animation_data.action.fcurves
-	# Setup FCurves to fetch
-	posID = target.path_from_id('location')
+	action = target.animation_data.action
+	# Determine FCurves to fetch
+	posID = 'location'
 	pos = [ None ] * 3
 	if target.rotation_mode == 'QUATERNION':
-		rotID = target.path_from_id('rotation_quaternion')
+		rotID = 'rotation_quaternion'
 		rot = [ None ] * 4
 	else:
-		rotID = target.path_from_id('rotation_euler')
+		rotID = 'rotation_euler'
 		rot = [ None ] * 3
 	# Find/Init FCurves
 	for i in range(0,len(pos)):
-		pos[i] = fcurves.find(posID, index=i)
-		if pos[i] is None: pos[i] = fcurves.new(posID, index=i)
+		pos[i] = action.fcurve_ensure_for_datablock(datablock = target, data_path = posID, index=i)
 	for i in range(0,len(rot)):
-		rot[i] = fcurves.find(rotID, index=i)
-		if rot[i] is None: rot[i] = fcurves.new(rotID, index=i)
+		rot[i] = action.fcurve_ensure_for_datablock(datablock = target, data_path = rotID, index=i)
 
 	return pos, rot
 		
@@ -246,9 +244,9 @@ def updateTrackerStates(context):
 					# Insert keyframe by applying and recording
 					applyTargetTransform(target, getTargetTransform(tracker, target, mat))
 					target.keyframe_insert('location', frame=recFrame)
-				if target.rotation_mode == 'QUATERNION':
+					if target.rotation_mode == 'QUATERNION':
 						target.keyframe_insert('rotation_quaternion', frame=recFrame)
-				else:
+					else:
 						target.keyframe_insert('rotation_euler', frame=recFrame)
 
 					# Insert keyframe directly
@@ -264,10 +262,10 @@ def updateTrackerStates(context):
 					for i in range(0,len(rotFC)):
 						rotFC[i].keyframe_points.insert(recFrame, rot[i], options={'FAST'}) """
 
-			if not trk.hasRecorded:
-						print("    First pose for tracker '{}' recorded at {}!".format(trk.trackerSetup.vrpnPath, time))
-						trk.firstRecordTime = time
-				trk.hasRecorded = True
+				if not trk.hasRecorded:
+					print("    First pose for tracker '{}' recorded at {}!".format(trk.trackerSetup.vrpnPath, time))
+					trk.firstRecordTime = time
+					trk.hasRecorded = True
 
 			# Too slow still
 			""" if target and keyframing:
@@ -403,7 +401,7 @@ class RequestTracking(bpy.types.Operator):
 		time = datetime.fromisoformat(self.reqTimeISO)
 		recTime, self.reqFrame = mapRecordingTime(time)
 		print("Requesting tracking for frame {:.2f}, {:.2f}ms ago!".format(self.reqFrame, (datetime.now(timezone.utc)-time)/timedelta(milliseconds=1)))
-        return self.execute(context)
+		return self.execute(context)
 
 	def execute(self, context):
 		if not recording_database:
