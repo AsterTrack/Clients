@@ -20,7 +20,7 @@ rm $SRC_PATH/ParseVersion.cmake
 touch $SRC_PATH/ParseVersion.cmake
 
 pushd linux/build
-cmake ../../$SRC_PATH -DCMAKE_BUILD_TYPE=Debug -DVRPN_USE_STD_CHRONO=ON -DVRPN_USE_GPM_MOUSE=OFF
+cmake ../../$SRC_PATH -DVRPN_USE_STD_CHRONO=ON -DVRPN_USE_GPM_MOUSE=OFF
 make -j4 quat vrpn
 # Install just needed for easy access to include files
 cmake -DCMAKE_INSTALL_COMPONENT=clientsdk -DCMAKE_INSTALL_PREFIX=../install -P cmake_install.cmake

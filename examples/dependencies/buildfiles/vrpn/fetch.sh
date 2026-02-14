@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
 
-# FETCH_URL=https://github.com/vrpn/vrpn/archive/refs/heads/master.zip
-# Frozen 7.35
-#FETCH_URL=https://github.com/vrpn/vrpn/archive/refs/tags/version_07.35.zip
-#FETCH_VERSION=7.35
-# Frozen 7.36 with regression fixes and support for python 3.13
-FETCH_URL=https://github.com/vrpn/vrpn/archive/844c5873d71b70a51825f2a8b9928bfc9a84c717.zip
-FETCH_VERSION=7.36-master
+# Frozen v07.36
+#FETCH_URL=https://github.com/vrpn/vrpn/archive/refs/tags/v07.36.zip
+# Custom modification to expose more connectivity information
+FETCH_URL=https://github.com/Seneral/vrpn/archive/3474fff0c3bb12b56af16a5f7ed469558e54a597.zip
+FETCH_VERSION=v07.37-custom
 FETCH_NAME=vrpn
 FETCH_ARCHIVE=source.zip
 
