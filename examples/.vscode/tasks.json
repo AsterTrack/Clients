@@ -61,9 +61,9 @@
         { // Only release and debug builds on windows, for both dependency and main file
             "id": "buildType",
             "description": "Build Type:",
-            "default": "release-verify",
+            "default": "release",
             "type": "pickString",
-            "options": [ "release", "release-verify", "debug" ]
+            "options": [ "release", "RelWithDebInfo", "debug" ]
         },
         {
             "id": "depName",

@@ -1,5 +1,6 @@
-cmake_minimum_required(VERSION 3.0)
-project(astertrack-viewer)
+cmake_minimum_required(VERSION 3.15)
+project(AsterTrack_Viewer)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Assure either debug or release is set
 if (NOT CMAKE_BUILD_TYPE)
@@ -54,7 +55,7 @@ target_include_directories(astertrack-viewer PRIVATE "${PROJECT_SOURCE_DIR}/depe
 target_compile_features(astertrack-viewer PRIVATE cxx_generalized_initializers cxx_static_assert cxx_std_20)
 
 # Specify definitions
-target_compile_definitions(astertrack-viewer PUBLIC GLEW_STATIC _UNICODE
+target_compile_definitions(astertrack-viewer PUBLIC GLEW_STATIC
 	EIGEN_MPL2_ONLY EIGEN_NO_AUTOMATIC_RESIZING EIGEN_INITIALIZE_MATRICES_BY_NAN BLOB_EMULATION)
 target_compile_definitions(astertrack-viewer PUBLIC $<$<CONFIG:Debug>:_DEBUG>)
 target_compile_definitions(astertrack-viewer PUBLIC $<$<CONFIG:Release>:NDEBUG EIGEN_NO_DEBUG>)
@@ -69,28 +70,24 @@ if(MSVC)
 
 	# MSVC-specific compiler setup
 	target_compile_definitions(astertrack-viewer PUBLIC _CRT_SECURE_NO_WARNINGS _USE_MATH_DEFINES _ENABLE_EXTENDED_ALIGNED_STORAGE INTERFACE_LINKED)
-	target_compile_options(astertrack-viewer PUBLIC -nologo -bigobj -EHsc -W1)
+	target_compile_options(astertrack-viewer PUBLIC -nologo -bigobj -EHsc -W1 -utf-8)
 	target_link_options(astertrack-viewer PUBLIC -subsystem:windows -ENTRY:mainCRTStartup) # re-route GUI entry point to main
 #	target_compile_options(astertrack-viewer PUBLIC "-Wall -wd4477")
-	target_compile_options(astertrack-viewer PUBLIC "/wd4348")
-
-	# And because libusb defaults to /MD and msbuild does not allow you to override it, libusb is built with wrong runtime libs
-	# Need to force linker to use this now
-	# Update: Forcefully overrode setting with environment variable for libusb build, so this workaround is not needed anymore
-	#target_link_options(astertrack-viewer PUBLIC /NODEFAULTLIB:msvcrt.lib /NODEFAULTLIB:msvcprt.lib)
+	target_compile_options(astertrack-viewer PUBLIC "-wd4348")
+	target_compile_options(astertrack-viewer PUBLIC "-wd4068")
 
 	# Configuration-specific setup
 	# Gave up on windows dual Release/Debug builds, support for that is lackluster in CMake at best
 	if(CMAKE_BUILD_TYPE STREQUAL Debug)
 		set(LIB_DIR ${PLT_LIB_DIR}/debug)
-		target_compile_options(astertrack-viewer PUBLIC -MTd -Z7 -O2)
-		set(MSVC_RUNTIME_LIBRARY MultiThreadedDebug)
-		STRING (REGEX REPLACE "/RTC(su|[1su])" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
-		STRING (REGEX REPLACE "/RTC(su|[1su])" "" CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
+		set(SAN -RTCsu)
+		#set(SAN -O2)
+		target_compile_options(astertrack-viewer PUBLIC -Z7 -Zi ${SAN})
+		set_target_properties(astertrack-viewer PROPERTIES MSVC_RUNTIME_LIBRARY MultiThreadedDebug)
 	else()
 		set(LIB_DIR ${PLT_LIB_DIR}/release)
-		target_compile_options(astertrack-viewer PUBLIC -MT -O2)
-		set(MSVC_RUNTIME_LIBRARY MultiThreaded)
+		target_compile_options(astertrack-viewer PUBLIC -O2)
+		set_target_properties(astertrack-viewer PROPERTIES MSVC_RUNTIME_LIBRARY MultiThreaded)
 	endif()
 
 	# Find local libraries
@@ -110,7 +107,7 @@ if(MSVC)
 
 	# Link libraries
 	target_link_libraries(astertrack-viewer ${LIB_VRPN} ${LIB_GLFW})
-	target_link_libraries(astertrack-viewer opengl32 gdi32.lib shell32.lib)
+	target_link_libraries(astertrack-viewer opengl32 gdi32 shell32)
 
 	# Prevent MSVC from putting it in /Debug or /Release subdirectories
 	set_target_properties(astertrack-viewer PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_CURRENT_BINARY_DIR})

@@ -17,13 +17,6 @@ if not exist "%SRC_PATH%" (
 set MODE=%1
 if "%MODE%"=="" (
 	set MODE=release
-) else (
-	if NOT "%MODE%"=="release" (
-		if NOT "%MODE%" == "debug" (
-			echo Invalid mode %MODE%, expecting 'release' or 'debug'
-			exit /B
-		)
-	)
 )
 
 if not exist win\build\%MODE% md win\build\%MODE%
@@ -42,12 +35,14 @@ if "%MODE%"=="debug" (
 
 pushd win\build\%MODE%
 cmake -DCMAKE_MSVC_RUNTIME_LIBRARY=%CRT% -DCMAKE_POLICY_DEFAULT_CMP0091=NEW ^
+	-DVRPN_USE_STD_CHRONO=ON -DVRPN_USE_GPM_MOUSE=OFF -DVRPN_BUILD_PYTHON_HANDCODED_3X=ON ^
 	-DCMAKE_BUILD_TYPE=%MODE% -G "NMake Makefiles" ..\..\..\%SRC_PATH%
-:: -DCMAKE_VERBOSE_MAKEFILE=ON
-nmake vrpn quat
+nmake quat vrpn vrpn-python
 popd
 pushd win\install\%MODE%
-cmake -DCMAKE_INSTALL_COMPONENT=clientsdk -DCMAKE_INSTALL_PREFIX=. -P ..\..\build\%MODE%\cmake_install.cmake
+cmake -DCMAKE_INSTALL_COMPONENT=clientsdk -DCMAKE_INSTALL_PREFIX=./cpp -P ..\..\build\%MODE%\cmake_install.cmake
+:: cmake -DCMAKE_INSTALL_COMPONENT=python -DCMAKE_INSTALL_PREFIX=./python -P ..\..\build\%MODE%\cmake_install.cmake
+:: cmake_install for this component is broken (lines commented out), can just copy it directly
 popd
 
 echo -----------------------------------------
@@ -55,8 +50,8 @@ echo Build completed
 echo -----------------------------------------
 
 :: Try to verify output
-if not exist win\install\%MODE%\lib (
-	echo Build failed - win\install\%MODE%\lib does not exist!
+if not exist win\install\%MODE%\cpp\lib (
+	echo Build failed - win\install\%MODE%\cpp\lib does not exist!
 	exit /B
 )
 
@@ -67,9 +62,13 @@ if "%CD:~-29%" neq "\dependencies\buildfiles\vrpn" (
 )
 
 echo Installing dependency files...
-if not exist ..\..\include\vrpn md ..\..\include\vrpn
-robocopy win\install\%MODE%\include ..\..\include\vrpn /E /NFL /NDL /NJH /NJS
-if not exist ..\..\lib\win\%MODE%\vrpn md ..\..\lib\win\%MODE%\vrpn
-robocopy win\install\%MODE%\lib ..\..\lib\win\%MODE%\vrpn /E /NFL /NDL /NJH /NJS
+if not exist ..\..\..\cpp\include\vrpn md ..\..\..\cpp\include\vrpn
+robocopy win\install\%MODE%\cpp\include ..\..\..\cpp\include\vrpn /E /NFL /NDL /NJH /NJS
+if not exist ..\..\..\cpp\lib\win\%MODE%\vrpn md ..\..\..\cpp\lib\win\%MODE%\vrpn
+robocopy win\install\%MODE%\cpp\lib ..\..\..\cpp\lib\win\%MODE%\vrpn /E /NFL /NDL /NJH /NJS
+
+if not exist ..\..\..\python\lib md ..\..\..\python\lib
+:: copy win\install\%MODE%\python\lib\pythondist-packages\vrpn.pyd ..\..\..\python\lib
+copy win\build\%MODE%\python\vrpn.pyd ..\..\..\python\lib
 
 echo Now you can call clean.bat if everything succeeded.

@@ -13,7 +13,7 @@
                     "build", "&",
                     "cd", "build", "&&",
                     "cmake", "-DCMAKE_BUILD_TYPE=${input:buildType}", "..", "&&",
-                    "msbuild", "astertrack-viewer.sln", "-p:Configuration=${input:buildType}"
+                    "msbuild", "AsterTrack_Viewer.sln", "-p:Configuration=${input:buildType}"
                 ],
                 "problemMatcher": "$msCompile",
                 "options": { "shell": { "executable": "cmd.exe", "args": [ "/d", "/c", "vcvars64.bat", "&&", "set", "CL=/MP", "&&"] } }
